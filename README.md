@@ -1,10 +1,8 @@
----
-
 # User Authentication
 
 ## What is User Authentication
 
-- `User Authentication` is verifying that an app’s users are who they say they are.
+- User Authentication is verifying that an app’s users are who they say they are.
 - Three Main Authentication Strategy Classes:
     1. `Knowledge` - Verification that the user knows something.
         - Passwords
@@ -13,7 +11,7 @@
     - Problems include:
         - Reliant on passwords strength.
         - Information can be guessable or searchable.
-    1. `Ownership` - Verification that the user has something.
+    1. `Ownership` - Verification that the user has something.A
         - Email Address
         - Mobile Phone
         - An OTP fob or app
