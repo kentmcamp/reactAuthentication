@@ -11,7 +11,7 @@
     - Problems include:
         - Reliant on passwords strength.
         - Information can be guessable or searchable.
-    1. `Ownership` - Verification that the user has something.A
+    1. `Ownership` - Verification that the user has something.
         - Email Address
         - Mobile Phone
         - An OTP fob or app
@@ -205,9 +205,140 @@
 
 ## Adding a Sign-Up Route to the Server
 
-## Generating JSON Web Tokens
+- In the `Back-End` project, create a new sign-up file in `src > routes`
+    - You’ll need to install the following:
+    - `npm install bcrypt dotenv jsonwebtoken`
+        - `bcrypt` is used for hashing passwords securely. It provides methods for generating password hashes and verifying them.
+        - `dotenv` is a module that loads environmental variables from a `.env` file into your application. This keeps sensitive information, such as API keys and database credentials, separate from the source code.
+        - `jsonwebtoken (JWT)` is for creating and verifying JSON Web Tokens, used for secure data exchange and authentication.
+    - `signUpRoute.js`
+
+        ```jsx
+        import bcrypt from 'bcrypt';
+        import jwt from 'jsonwebtoken';
+        import { getDbConnection } from '../db';
+
+        export const signUpRoute = {
+            path: '/api/signup',
+            method: 'post',
+            handler: async (req, res) => {
+                try {
+                    const { email, password } = req.body;
+                    const db = getDbConnection('react-auth-db');
+
+                    const user = await db.collection('users').findOne({ email });
+                    if (user) {
+                        return res.sendStatus(409);
+                    }
+
+                    const passwordHash = await bcrypt.hash(password, 10);
+
+                    const startingInfo = {
+                        hairColor: '',
+                        favoriteFood: '',
+                        bio: '',
+                    };
+
+                    const result = await db.collection('users').insertOne({
+                        email,
+                        passwordHash,
+                        info: startingInfo,
+                        isVerified: false,
+                    });
+
+                    const { insertedId } = result;
+
+                    jwt.sign({
+                        id: insertedId,
+                        email,
+                        info: startingInfo,
+                        isVerified: false,
+                    }, process.env.JWT_SECRET,
+                    {
+                        expiresIn: '2d',
+                    },
+                    (err, token) => {
+                        if (err) {
+                            console.error('Error signing token:', err);
+                            return res.status(500).send(err);
+                        }
+                        res.status(200).json({ token });
+                    });
+                } catch (error) {
+                    console.error('Error during sign up:', error);
+                    res.status(500).json({ message: 'Internal Server Error' });
+                }
+            }
+        };
+
+        ```
+
+- Create the environmental variables in a new `.env` file in the root directory.
+    - `.env`
+
+        ```jsx
+        JWT_SECRET=abcdefghijklmnop
+        ```
+
+- Add the `signUpRoute` to `index.js`
+    - `index.js`
+
+        ```jsx
+        import { testRoute } from './testRoute';
+        import { signUpRoute } from './signUpRoute';
+
+        export const routes = [
+            signUpRoute,
+            testRoute,
+        ];
+        ```
+
+- Add the `.env` to `package.json`
+- `package.json`
+
+    ```jsx
+    "dev": "nodemon --exec ./node_modules/.bin/babel-node -r dotenv/config ./src/server.js",
+    ```
+
 
 ## Adding a Login Route to the Server
+
+- `loginRoute.js`
+
+    ```jsx
+    import bcrypt from 'bcrypt';
+    import jwt from 'jsonwebtoken';
+    import { getDbConnection } from '../db';
+
+    export const logInRoute = {
+        path: '/api/login',
+        method: 'post',
+        handler: async (req, res) => {
+            const {email, password} = req.body;
+            const db = getDbConnection('react-auth-db');
+            const user = await db.collection('users').findOne({email});
+
+            // password hash check
+            if (!user) return res.sendStatus(401);
+
+            const { _id: id, isVerified, passwordHash, info} = user;
+            const isCorrect = await bcrypt.compare(password, passwordHash);
+
+            if (isCorrect) {
+                jwt.sign({id, isVerified, email, info}, process.env.JWT_SECRET, { expiresIn: '2d'}, (err, token) => {
+                    if (err) {
+                        res.status(500).json(err);
+                    }
+
+                    res.status(200).json({token});
+                });
+            } else {
+                res.sendStatus(401);
+            }
+        }
+    }
+    ```
+
 
 ## Implementing JWTs on the Front End
 
@@ -236,24 +367,6 @@
 ---
 
 -
-    - `
-
-        ```jsx
-
-        ```
-
-    - `
-
-        ```jsx
-
-        ```
-
-    - `
-
-        ```jsx
-
-        ```
-
     - `
 
         ```jsx
