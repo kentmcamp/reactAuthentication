@@ -342,9 +342,143 @@
 
 ## Implementing JWTs on the Front End
 
+- Create two files in the `auth` directory in the `front-end`
+    - `useToken.js`
+
+        ```jsx
+        import { useState } from 'react';
+
+        export const useToken = () => {
+            const [token, setTokenInternal] = useState(() => {
+                return localStorage.getItem('token');
+            });
+
+            const setToken = newToken => {
+                localStorage.setItem('token', newToken);
+                setTokenInternal(newToken);
+            }
+
+            return [token, setToken];
+        }
+        ```
+
+    - `useUser.js`
+
+        ```jsx
+        import { useState, useEffect} from 'react';
+        import { useToken } from './useToken';
+
+        export const useUser = () => {
+            const [token] = useToken();
+
+            const getPayloadFromToken = token => {
+                const encodedPayload = token.split('.')[1];
+                return JSON.parse(atob(encodedPayload));
+            }
+
+            const [user, setUser] = useState(() => {
+                if (!token) return null;
+                return getPayloadFromToken(token);
+            });
+
+            useEffect(() => {
+                if (!token) {
+                    setUser(null);
+                } else {
+                    setUser(getPayloadFromToken(token));
+                }
+            }, [token]);
+
+            return user;
+        }
+        ```
+
+
 ## Adding JWTs to the Sign-Up Page
 
+- `SignUpPage.js`
+
+    ```jsx
+    import { useState } from "react";
+    import { useHistory } from "react-router-dom";
+    import { useToken } from "../auth/useToken";
+    import axios from 'axios';
+
+    export const SignUpPage = () => {
+      const [token, setToken] = useToken();
+      const [errorMessage, setErrorMessage] = useState("");
+      const [emailValue, setEmailValue] = useState("");
+      const [passwordValue, setPasswordValue] = useState("");
+      const [confirmPasswordValue, setConfirmPassword] = useState("");
+
+      const history = useHistory();
+
+      const onSignUpClicked = async () => {
+        const response = await axios.post('/api/signup', {
+          email: emailValue,
+          password: passwordValue,
+        });
+
+        const {token} = response.data;
+        setToken(token);
+        history.push('/');
+      };
+
+      return (
+        <div className="content-container">
+          <h1>Sign Up</h1>
+          {errorMessage && <div className="fail">{errorMessage}</div>}
+
+          <input
+            value={emailValue}
+            onChange={(e) => setEmailValue(e.target.value)}
+            placeholder="email@domain.com"
+          />
+          <input
+            value={passwordValue}
+            onChange={(e) => setPasswordValue(e.target.value)}
+            type="password"
+            placeholder="password"
+          />
+          <input
+            value={confirmPasswordValue}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            type="password"
+            placeholder="confirm password"
+          />
+          <hr/>
+          <button disabled={
+                !emailValue || !passwordValue ||
+                passwordValue !== confirmPasswordValue
+            }
+            onClick={onSignUpClicked}>
+            Sign Up
+          </button>
+          <button onClick={() => history.push("/login")}>Already Signed Up?</button>
+        </div>
+      );
+    };
+    ```
+
+- `PrivateRoute.js`
+
+    ```jsx
+    import { Route, Redirect } from 'react-router-dom'
+    import { useUser} from './useUser'
+
+    export const PrivateRoute = props => {
+        const user = useUser();
+
+        if (!user) return <Redirect to ="/login" />
+
+        return <Route {...props} />
+    }
+    ```
+
+
 ## Adding JWTs to Login Page
+
+-
 
 ## Adding an Update User Route
 
